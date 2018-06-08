@@ -1,0 +1,12 @@
+#cloud-config
+package_upgrade: true
+
+packages:
+  - nano
+  - wget
+  - unzip
+
+runcmd:
+  - wget https://raw.githubusercontent.com/motioncrypto/motion-docs/master/scripts/masternode.sh
+  - chmod +x masternode.sh
+  - ./masternode.sh 5KH11kxNhR2G6MhdohbH1DdKMnL8745VFXvPvUDoYqAdN5dDF7L -y

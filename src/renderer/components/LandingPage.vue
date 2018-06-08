@@ -1,0 +1,104 @@
+<template>
+  <div id="wrapper">
+    <img id="logo" src="~@/assets/logo.svg" alt="Motion">
+    <h1 class="title">Masternode Installer</h1>
+    <main>
+      <div class="steps-content">
+        <zero-step v-if="currentStep === 0 || !currentStep" />
+        <first-step v-if="currentStep === 1" />
+        <second-step v-if="currentStep === 2" />
+        <third-step v-if="currentStep === 3" />
+      </div>
+      <steps v-if="balance >= 1000" />
+    </main>
+  </div>
+</template>
+
+<script>
+import 'hazardous';
+import { execFile } from 'child_process';
+import path from 'path';
+import os from 'os';
+import { chmod } from 'fs';
+import ZeroStep from './LandingPage/ZeroStep';
+import FirstStep from './LandingPage/FirstStep';
+import SecondStep from './LandingPage/SecondStep';
+import ThirdStep from './LandingPage/ThirdStep';
+import Steps from './Steps';
+
+export default {
+  name: 'landing-page',
+  components: {
+    ZeroStep,
+    FirstStep,
+    SecondStep,
+    ThirdStep,
+    Steps,
+  },
+  computed: {
+    balance() {
+      return this.$store.state.Wallet.balance;
+    },
+    currentStep() {
+      return this.$store.state.Steps.currentStep;
+    },
+  },
+  mounted() {
+    chmod(`${path.join(__static, `/daemon/${os.platform()}/motiond`)}`, '0777', (err) => {
+      if (err) {
+        console.log(err);
+      }
+
+      execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`)}`,
+        ['-daemon', '-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J'],
+        (error, stdout) => {
+          if (error) {
+            throw error;
+          }
+          console.log(stdout);
+        });
+    });
+  },
+};
+</script>
+
+<style lang="scss">
+  @import url('https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700');
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body { font-family: 'Open Sans', sans-serif; }
+
+  #wrapper {
+    background-color: $brand-color;
+    height: 100vh;
+    padding: 60px 40px;
+    width: 100vw;
+  }
+
+  #logo {
+    height: auto;
+    margin-bottom: 20px;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+  }
+
+  h1.title {
+    text-align: center;
+    font-weight: lighter;
+    font-size: 1.4em;
+  }
+
+  .steps-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+  }
+</style>
