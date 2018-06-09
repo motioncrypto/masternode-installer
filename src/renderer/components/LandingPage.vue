@@ -24,6 +24,7 @@ import FirstStep from './LandingPage/FirstStep';
 import SecondStep from './LandingPage/SecondStep';
 import ThirdStep from './LandingPage/ThirdStep';
 import Steps from './Steps';
+const remote = require('electron').remote;
 
 export default {
   name: 'landing-page',
@@ -50,11 +51,21 @@ export default {
         }
 
         execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`).replace('app.asar', 'app.asar.unpacked')}`,
-          ['-daemon', '-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J'],
-          (error, stdout) => {
+          ['-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J'],
+          (error, stdout, stderr) => {
             if (error) {
-              throw error;
+              console.log('Wallet is open');
+              // eslint-disable-next-line
+              new window.Notification('Your Motion Wallet should be closed', {
+                body: 'Please close it and re-run the MasterNode Installer.',
+              });
+
+              setTimeout(() => {
+                const window = remote.getCurrentWindow();
+                window.close();
+              }, 10000);
             }
+            console.log(stderr);
             console.log(stdout);
           });
       });

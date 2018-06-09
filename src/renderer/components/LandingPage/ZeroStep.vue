@@ -63,7 +63,7 @@ export default {
           })
           .catch((error) => {
             console.log(error);
-            if (error.code === 401 || error.code === 'ECONNREFUSED') {
+            if (error.code === 401) {
               // eslint-disable-next-line
               new window.Notification('Your Motion Wallet should be closed', {
                 body: 'Please close it and re-run the MasterNode Installer.',
@@ -72,14 +72,14 @@ export default {
               setTimeout(() => {
                 const window = remote.getCurrentWindow();
                 window.close();
-              }, 3000);
+              }, 10000);
             } else {
               setTimeout(() => {
                 this.checkIfWalletIsAlreadyRunning();
               }, 1000);
             }
           });
-      }, 3000);
+      }, 10000);
     },
   },
   mounted() {
