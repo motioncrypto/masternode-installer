@@ -44,7 +44,7 @@ export default {
     },
   },
   mounted() {
-    chmod(`${path.join(__static, `/daemon/${os.platform()}/motiond`)}`, '0777', (err) => {
+    chmod(`${path.join(__static, `/daemon/${os.platform()}/motiond${os.platform() === 'win32' ? '.exe' : ''}`)}`, '0777', (err) => {
       if (err) {
         console.log(err);
       }

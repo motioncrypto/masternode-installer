@@ -10,7 +10,7 @@
 <script>
 import axios from 'axios';
 import { setTimeout } from 'timers';
-const remote = require('electron').remote;
+// const remote = require('electron').remote;
 const Client = require('motion-core');
 const client = new Client({
   username: 'motion',
@@ -68,10 +68,10 @@ export default {
               body: 'Please close it and re-run the MasterNode Installer.',
             });
 
-            setTimeout(() => {
-              const window = remote.getCurrentWindow();
-              window.close();
-            }, 3000);
+            // setTimeout(() => {
+            //   const window = remote.getCurrentWindow();
+            //   window.close();
+            // }, 3000);
           } else {
             setTimeout(() => {
               this.checkIfWalletIsAlreadyRunning();

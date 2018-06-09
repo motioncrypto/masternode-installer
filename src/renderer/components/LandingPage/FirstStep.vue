@@ -27,7 +27,6 @@ import { shell, ipcRenderer } from 'electron';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import getPath from 'platform-folders';
 import userPrompt from 'electron-osx-prompt';
 import { setTimeout } from 'timers';
 const { dialog } = require('electron').remote;
@@ -166,7 +165,10 @@ export default {
       });
     },
     getCurrentMasternodes() {
-      let datadirPath = `${getPath('appData')}/MotionCore/masternode.conf`;
+      let datadirPath = `${os.userInfo().homedir}/AppData/Roaming/MotionCore/masternode.conf`;
+      if (os.platform() === 'darwin') {
+        datadirPath = `${os.userInfo().homedir}/Library/Application Support/MotionCore/masternode.conf`;
+      }
       if (os.platform() === 'linux') {
         datadirPath = `${os.userInfo().homedir}/.motioncore/masternode.conf`;
       }
