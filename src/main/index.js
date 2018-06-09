@@ -100,6 +100,11 @@ app.on('quit', () => {
       setTimeout(() => {
         app.quit();
       }, 1000);
+    })
+    .catch(() => {
+      setTimeout(() => {
+        app.quit();
+      }, 1000);
     });
 });
 
@@ -111,6 +116,9 @@ app.on('window-all-closed', () => {
       setTimeout(() => {
         app.quit();
       }, 1000);
+    })
+    .catch(() => {
+      app.quit();
     });
   // }
 });

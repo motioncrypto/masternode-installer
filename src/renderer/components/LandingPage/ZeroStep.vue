@@ -10,7 +10,7 @@
 <script>
 import axios from 'axios';
 import { setTimeout } from 'timers';
-// const remote = require('electron').remote;
+const remote = require('electron').remote;
 const Client = require('motion-core');
 const client = new Client({
   username: 'motion',
@@ -53,31 +53,33 @@ export default {
         });
     },
     checkIfWalletIsAlreadyRunning() {
-      client
-        .getInfo()
-        .then((response) => {
-          console.log(response);
-          this.getBlockCount();
-          this.checkIfWalletIsLoaded();
-        })
-        .catch((error) => {
-          console.log(error);
-          if (error.code === 401 || error.code === 'ECONNREFUSED') {
-            // eslint-disable-next-line
-            new window.Notification('Your Motion Wallet should be closed', {
-              body: 'Please close it and re-run the MasterNode Installer.',
-            });
+      setTimeout(() => {
+        client
+          .getInfo()
+          .then((response) => {
+            console.log(response);
+            this.getBlockCount();
+            this.checkIfWalletIsLoaded();
+          })
+          .catch((error) => {
+            console.log(error);
+            if (error.code === 401 || error.code === 'ECONNREFUSED') {
+              // eslint-disable-next-line
+              new window.Notification('Your Motion Wallet should be closed', {
+                body: 'Please close it and re-run the MasterNode Installer.',
+              });
 
-            // setTimeout(() => {
-            //   const window = remote.getCurrentWindow();
-            //   window.close();
-            // }, 3000);
-          } else {
-            setTimeout(() => {
-              this.checkIfWalletIsAlreadyRunning();
-            }, 1000);
-          }
-        });
+              setTimeout(() => {
+                const window = remote.getCurrentWindow();
+                window.close();
+              }, 3000);
+            } else {
+              setTimeout(() => {
+                this.checkIfWalletIsAlreadyRunning();
+              }, 1000);
+            }
+          });
+      }, 3000);
     },
   },
   mounted() {

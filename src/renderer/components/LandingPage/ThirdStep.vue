@@ -79,7 +79,7 @@ export default {
         .stop()
         .then(() => {
           setTimeout(() => {
-            execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`)}`, ['-daemon', '-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J']);
+            execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`).replace('app.asar', 'app.asar.unpacked')}`, ['-daemon', '-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J']);
           }, 1000);
         });
     },

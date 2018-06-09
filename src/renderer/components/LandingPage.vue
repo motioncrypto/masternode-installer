@@ -15,7 +15,6 @@
 </template>
 
 <script>
-import 'hazardous';
 import { execFile } from 'child_process';
 import path from 'path';
 import os from 'os';
@@ -44,20 +43,21 @@ export default {
     },
   },
   mounted() {
-    chmod(`${path.join(__static, `/daemon/${os.platform()}/motiond${os.platform() === 'win32' ? '.exe' : ''}`)}`, '0777', (err) => {
-      if (err) {
-        console.log(err);
-      }
+    chmod(`${path.join(__static, `/daemon/${os.platform()}/motiond${os.platform() === 'win32' ? '.exe' : ''}`).replace('app.asar', 'app.asar.unpacked')}`,
+      '0777', (err) => {
+        if (err) {
+          console.log(err);
+        }
 
-      execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`)}`,
-        ['-daemon', '-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J'],
-        (error, stdout) => {
-          if (error) {
-            throw error;
-          }
-          console.log(stdout);
-        });
-    });
+        execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`).replace('app.asar', 'app.asar.unpacked')}`,
+          ['-daemon', '-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J'],
+          (error, stdout) => {
+            if (error) {
+              throw error;
+            }
+            console.log(stdout);
+          });
+      });
   },
 };
 </script>
