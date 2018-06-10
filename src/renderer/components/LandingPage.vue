@@ -19,6 +19,7 @@ import { execFile } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { chmod } from 'fs';
+import bplist from 'bplist-parser';
 import ZeroStep from './LandingPage/ZeroStep';
 import FirstStep from './LandingPage/FirstStep';
 import SecondStep from './LandingPage/SecondStep';
@@ -48,6 +49,17 @@ export default {
       '0777', (err) => {
         if (err) {
           console.log(err);
+        }
+
+        if (os.platform() === 'darwin') {
+          console.log(`${os.userInfo().homedir}/Library/Preferences/org.motion.Motion-Qt.plist`);
+          bplist.parseFile(`${os.userInfo().homedir}/Library/Preferences/org.motion.Motion-Qt.plist`, (err, plistData) => {
+            if (err) throw err;
+
+            this.$store.commit('SET_MNCONFPATH', {
+              mnConfPath: plistData[0].strDataDir,
+            });
+          });
         }
 
         execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`).replace('app.asar', 'app.asar.unpacked')}`,

@@ -24,7 +24,7 @@
 
 <script>
 import { shell, ipcRenderer } from 'electron';
-import os from 'os';
+// import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import userPrompt from 'electron-osx-prompt';
@@ -165,13 +165,15 @@ export default {
       });
     },
     getCurrentMasternodes() {
-      let datadirPath = `${os.userInfo().homedir}/AppData/Roaming/MotionCore/masternode.conf`;
-      if (os.platform() === 'darwin') {
-        datadirPath = `${os.userInfo().homedir}/Library/Application Support/MotionCore/masternode.conf`;
-      }
-      if (os.platform() === 'linux') {
-        datadirPath = `${os.userInfo().homedir}/.motioncore/masternode.conf`;
-      }
+      let datadirPath = this.$store.state.Information.mnConfPath;
+      // let datadirPath = `${os.userInfo().homedir}/AppData/Roaming/MotionCore/masternode.conf`;
+      // if (os.platform() === 'darwin') {
+      //   datadirPath =
+      //  `${os.userInfo().homedir}/Library/Application Support/MotionCore/masternode.conf`;
+      // }
+      // if (os.platform() === 'linux') {
+      //   datadirPath = `${os.userInfo().homedir}/.motioncore/masternode.conf`;
+      // }
 
       if (fs.existsSync(datadirPath)) {
         this.readCurrentMasternodes(datadirPath);
