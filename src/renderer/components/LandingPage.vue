@@ -19,6 +19,7 @@ import { execFile } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { chmod } from 'fs';
+import regedit from 'regedit';
 import bplist from 'bplist-parser';
 import ZeroStep from './LandingPage/ZeroStep';
 import FirstStep from './LandingPage/FirstStep';
@@ -52,12 +53,19 @@ export default {
         }
 
         if (os.platform() === 'darwin') {
-          console.log(`${os.userInfo().homedir}/Library/Preferences/org.motion.Motion-Qt.plist`);
           bplist.parseFile(`${os.userInfo().homedir}/Library/Preferences/org.motion.Motion-Qt.plist`, (err, plistData) => {
             if (err) throw err;
 
             this.$store.commit('SET_MNCONFPATH', {
               mnConfPath: plistData[0].strDataDir,
+            });
+          });
+        } else if (os.platform() === 'win32') {
+          regedit.list('HKCU\\SOFTWARE\\MOTION\\MOTION-QT', (err, registryData) => {
+            if (err) throw err;
+
+            this.$store.commit('SET_MNCONFPATH', {
+              mnConfPath: registryData[Object.keys(registryData)[0]].values.strDataDir.value,
             });
           });
         }
