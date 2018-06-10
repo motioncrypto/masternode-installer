@@ -19,7 +19,7 @@ import { execFile } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { chmod } from 'fs';
-import regedit from 'regedit';
+import Registry from 'winreg';
 import bplist from 'bplist-parser';
 import ZeroStep from './LandingPage/ZeroStep';
 import FirstStep from './LandingPage/FirstStep';
@@ -45,6 +45,29 @@ export default {
       return this.$store.state.Steps.currentStep;
     },
   },
+  methods: {
+    runDaemon() {
+      execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`)
+        .replace('app.asar', 'app.asar.unpacked')}`,
+      ['-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J', `-datadir=${this.$store.state.Information.mnConfPath}`],
+      (error, stdout, stderr) => {
+        if (error) {
+          console.log('Wallet is open');
+          // eslint-disable-next-line
+          new window.Notification('Your Motion Wallet should be closed', {
+            body: 'Please close it and re-run the MasterNode Installer.',
+          });
+
+          setTimeout(() => {
+            const window = remote.getCurrentWindow();
+            window.close();
+          }, 10000);
+        }
+        console.log(stderr);
+        console.log(stdout);
+      });
+    },
+  },
   mounted() {
     chmod(`${path.join(__static, `/daemon/${os.platform()}/motiond${os.platform() === 'win32' ? '.exe' : ''}`).replace('app.asar', 'app.asar.unpacked')}`,
       '0777', (err) => {
@@ -59,35 +82,39 @@ export default {
             this.$store.commit('SET_MNCONFPATH', {
               mnConfPath: plistData[0].strDataDir,
             });
+            this.runDaemon();
           });
         } else if (os.platform() === 'win32') {
-          regedit.list('HKCU\\SOFTWARE\\MOTION\\MOTION-QT', (err, registryData) => {
-            if (err) throw err;
+          // regedit.list('HKCU\\SOFTWARE\\MOTION\\MOTION-QT', (err, registryData) => {
+          //   if (err) throw err;
 
-            this.$store.commit('SET_MNCONFPATH', {
-              mnConfPath: registryData[Object.keys(registryData)[0]].values.strDataDir.value,
-            });
+          //   this.$store.commit('SET_MNCONFPATH', {
+          //     mnConfPath: registryData[Object.keys(registryData)[0]].values.strDataDir.value,
+          //   });
+          // });
+          const registryData = new Registry({
+            hive: Registry.HKCU,
+            key: '\\SOFTWARE\\MOTION\\MOTION-QT',
           });
-        }
 
-        execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`).replace('app.asar', 'app.asar.unpacked')}`,
-          ['-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J'],
-          (error, stdout, stderr) => {
-            if (error) {
-              console.log('Wallet is open');
-              // eslint-disable-next-line
-              new window.Notification('Your Motion Wallet should be closed', {
-                body: 'Please close it and re-run the MasterNode Installer.',
-              });
-
-              setTimeout(() => {
-                const window = remote.getCurrentWindow();
-                window.close();
-              }, 10000);
+          registryData.values((err, items) => {
+            if (err) { console.log(`ERROR: ${err}`); } else {
+              for (let i = 0; i < items.length; i += 1) {
+                if (items[i].name === 'strDataDir') {
+                  this.$store.commit('SET_MNCONFPATH', {
+                    mnConfPath: items[i].value,
+                  });
+                  this.runDaemon();
+                }
+              }
             }
-            console.log(stderr);
-            console.log(stdout);
           });
+        } else if (os.platform() === 'linux') {
+          this.$store.commit('SET_MNCONFPATH', {
+            mnConfPath: `${os.userInfo().homedir}/.motioncore`,
+          });
+          this.runDaemon();
+        }
       });
   },
 };

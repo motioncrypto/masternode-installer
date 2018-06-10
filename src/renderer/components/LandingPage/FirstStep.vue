@@ -165,7 +165,7 @@ export default {
       });
     },
     getCurrentMasternodes() {
-      let datadirPath = this.$store.state.Information.mnConfPath;
+      let datadirPath = `${this.$store.state.Information.mnConfPath}/masternode.conf`;
       // let datadirPath = `${os.userInfo().homedir}/AppData/Roaming/MotionCore/masternode.conf`;
       // if (os.platform() === 'darwin') {
       //   datadirPath =
@@ -199,7 +199,6 @@ export default {
       client
         .getInfo()
         .then((info) => {
-          console.log(path.join(__dirname, '/build/icons/256x256.png'));
           if (Object.prototype.hasOwnProperty.call(info, 'unlocked_until')) {
             userPrompt('First, we need to unlock your wallet, please input your Passphrase:',
               'Your Passphrase', path.join(__static, '/icons/256x256.png'))
