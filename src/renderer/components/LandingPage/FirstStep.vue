@@ -60,17 +60,11 @@ export default {
       client
         .listUnspent()
         .then((unspent) => {
-          const balance = unspent
+          let balance = 0;
+          unspent
             .filter(tx => tx.spendable)
-            .reduce((prev, next) => {
-              let prevAmount = 0;
-              if (prev.amount) {
-                prevAmount = prev.amount;
-              } else {
-                prevAmount = prev;
-              }
-              const nextAmount = next.amount ? next.amount : 0;
-              return Number(prevAmount + nextAmount);
+            .forEach((tx) => {
+              balance += tx.amount;
             });
           this.$store.commit('SET_BALANCE', {
             balance,
