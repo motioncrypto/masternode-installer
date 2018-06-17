@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import axios from 'axios';
+import vmodal from 'vue-js-modal';
 
 import App from './App';
 import router from './router';
@@ -18,6 +19,8 @@ const config = {
   messagingSenderId: '661248216725',
 };
 window.firebase.initializeApp(config);
+
+Vue.use(vmodal, { dialog: true });
 
 /* eslint-disable no-new */
 new Vue({

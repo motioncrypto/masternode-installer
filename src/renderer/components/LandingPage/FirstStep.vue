@@ -1,6 +1,6 @@
 <template>
   <div id="first-step">
-    <p>Currently you have: <span class="amount">{{balance}}</span>XMN</p>
+    <p>Currently you have: <span class="amount">{{Math.floor(balance)}}</span>XMN</p>
     <p class="mt20" v-if="balance >= 1000">We can continue.</p>
     <p class="mt20" v-if="balance < 1000">We can't continue. You need at least 1000 XMN unlocked on your account.</p>
     <div class="separator"></div>
@@ -19,6 +19,20 @@
     <div v-if="balance < 1000">
       <p>You can get more XMN from our <a href="https://motionproject.org/#exchanges" @click="openLink($event, 'https://motionproject.org/#exchanges')" target="_blank">supported exchanges</a>.</p>
     </div>
+    <modal name="passphrase" 
+      :adaptive="true"
+      :clickToClose="false"
+      class="prompt"
+      width="80%"
+      height="30%">
+      <div class="modal-container" v-bind:class="{ error: incorrectPassphrase }">
+        <form @submit.prevent="unlockWallet">
+          <p>We need to unlock your wallet, please input your Passphrase:</p>
+          <input type="password" v-model="passphrase" />
+          <button type="submit" @click="unlockWallet">Unlock</button>
+        </form>
+      </div>
+    </modal>
   </div>
 </template>
 
@@ -26,8 +40,8 @@
 import { shell, ipcRenderer } from 'electron';
 // import os from 'os';
 import fs from 'fs';
-import path from 'path';
-import userPrompt from 'electron-osx-prompt';
+// import path from 'path';
+import VueCircle from 'vue2-circle-progress';
 import { setTimeout } from 'timers';
 const { dialog } = require('electron').remote;
 const Client = require('motion-core');
@@ -38,12 +52,17 @@ const client = new Client({
 });
 
 export default {
+  components: {
+    VueCircle,
+  },
   data() {
     return {
       outputs: [],
       availableMasternodesToInstall: [],
       currentMasternodes: null,
       xmnaddress: null,
+      passphrase: '',
+      incorrectPassphrase: false,
     };
   },
   computed: {
@@ -172,6 +191,7 @@ export default {
       if (fs.existsSync(datadirPath)) {
         this.readCurrentMasternodes(datadirPath);
       } else {
+        console.log('datadir', datadirPath);
         // eslint-disable-next-line
         new window.Notification('Motion Datadir is not the default one', {
           body: 'Please select your Motion Datadir manually',
@@ -181,8 +201,10 @@ export default {
             properties: ['openDirectory'],
           });
         }, 1000);
-        datadirPath = `${datadirPath}/masternode.conf`;
-        if (fs.existsSync(datadirPath)) {
+        if (fs.existsSync(`${datadirPath}/masternode.conf`)) {
+          this.$store.commit('SET_MNCONFPATH', {
+            mnConfPath: datadirPath,
+          });
           this.readCurrentMasternodes(datadirPath);
         } else {
           this.getCurrentMasternodes();
@@ -194,29 +216,46 @@ export default {
         .getInfo()
         .then((info) => {
           if (Object.prototype.hasOwnProperty.call(info, 'unlocked_until')) {
-            userPrompt('First, we need to unlock your wallet, please input your Passphrase:',
-              'Your Passphrase', path.join(__static, '/icons/256x256.png'))
-              .then((input) => {
-                if (!input) {
-                  this.checkForPassphrase();
-                } else {
-                  client
-                    .walletPassphrase(input, 5000)
-                    .then(() => {
-                      this.$store.commit('SET_PASSPHRASE', {
-                        passphrase: input,
-                      });
-                    })
-                    .catch((error) => {
-                      if (error.code === -14) {
-                        this.checkForPassphrase();
-                      }
-                    });
-                }
-              })
-              .catch((err) => {
-                console.log(err);
-              });
+            // userPrompt('First, we need to unlock your wallet, please input your Passphrase:',
+            //   'Your Passphrase', path.join(__static, '/icons/256x256.png'))
+            //   .then((input) => {
+            //     if (!input) {
+            //       this.checkForPassphrase();
+            //     } else {
+            //       client
+            //         .walletPassphrase(input, 5000)
+            //         .then(() => {
+            //           this.$store.commit('SET_PASSPHRASE', {
+            //             passphrase: input,
+            //           });
+            //         })
+            //         .catch((error) => {
+            //           if (error.code === -14) {
+            //             this.checkForPassphrase();
+            //           }
+            //         });
+            //     }
+            //   })
+            //   .catch((err) => {
+            //     console.log(err);
+            //   });
+            this.$modal.show('passphrase');
+          }
+        });
+    },
+    unlockWallet() {
+      this.incorrectPassphrase = false;
+      client
+        .walletPassphrase(this.passphrase, 5000)
+        .then(() => {
+          this.$store.commit('SET_PASSPHRASE', {
+            passphrase: this.passphrase,
+          });
+          this.$modal.hide('passphrase');
+        })
+        .catch((error) => {
+          if (error.code === -14) {
+            this.incorrectPassphrase = true;
           }
         });
     },
@@ -274,6 +313,79 @@ ul.buttons {
     &:last-child {
       margin-right: 0;
     }
+  }
+}
+</style>
+
+<style lang="scss">
+.v--modal {
+  background-color: #1E8DE0 !important;
+  box-shadow: 0 20px 60px -2px rgba(27, 33, 58, 0.58);
+}
+
+.v--modal-box {
+  background-color: #1E8DE0 !important;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  p {
+    color: #fff;
+  }
+
+  .modal-container {
+    width: 80%;
+    margin: 0 auto;
+
+    p {
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      height: 30px;
+      border-radius: 5px;
+      border: none;
+      background-color: #fff;
+      margin-bottom: 20px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    &.error {
+      animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+      transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+      perspective: 1000px;
+    }
+
+    button {
+      background-color: #001B38;
+      margin: 0 auto;
+      display: block;
+
+      &:hover {
+        background-color: darken(#001B38, 10%);
+      }
+    }
+  }
+}
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
   }
 }
 </style>

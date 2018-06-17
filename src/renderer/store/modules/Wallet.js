@@ -13,17 +13,6 @@ const mutations = {
 };
 
 const actions = {
-  // getUser(commit, state) {
-  //   return new Promise((resolve, reject) => {
-  //     getAxiosClient(state).get('/user').then(response => {
-  //       commit(types.SET_USER, response.data);
-  //       resolve(response.data);
-  //     }, err => {
-  //       console.log(err);
-  //       reject(err);
-  //     });
-  //   });
-  // },
 };
 
 export default {

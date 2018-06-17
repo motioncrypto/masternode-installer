@@ -18,7 +18,7 @@
 import { execFile } from 'child_process';
 import path from 'path';
 import os from 'os';
-import { chmod } from 'fs';
+import { chmod, existsSync } from 'fs';
 import Registry from 'winreg';
 import bplist from 'bplist-parser';
 import ZeroStep from './LandingPage/ZeroStep';
@@ -47,25 +47,32 @@ export default {
   },
   methods: {
     runDaemon() {
-      execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`)
-        .replace('app.asar', 'app.asar.unpacked')}`,
-      ['-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J', `-datadir=${this.$store.state.Information.mnConfPath}`],
-      (error, stdout, stderr) => {
-        if (error) {
-          console.log('Wallet is open');
-          // eslint-disable-next-line
-          new window.Notification('Your Motion Wallet should be closed', {
-            body: 'Please close it and re-run the MasterNode Installer.',
-          });
+      if (this.$store.state.Information.mnConfPath) {
+        execFile(`${path.join(__static, `/daemon/${os.platform()}/motiond`)
+          .replace('app.asar', 'app.asar.unpacked')}`,
+        ['-rpcuser=motion', '-rpcpassword=47VMxa7GvxKaV3J', `-datadir=${this.$store.state.Information.mnConfPath}`],
+        (error, stdout, stderr) => {
+          if (error) {
+            console.log('Wallet is open');
+            // eslint-disable-next-line
+            new window.Notification('Your Motion Wallet should be closed', {
+              body: 'Please close it and re-run the MasterNode Installer.',
+            });
 
-          setTimeout(() => {
-            const window = remote.getCurrentWindow();
-            window.close();
-          }, 10000);
-        }
-        console.log(stderr);
-        console.log(stdout);
-      });
+            setTimeout(() => {
+              const window = remote.getCurrentWindow();
+              window.close();
+            }, 10000);
+          }
+          console.log(stderr);
+          console.log(stdout);
+        });
+      } else {
+        // eslint-disable-next-line
+        new window.Notification('You need to have Motion Wallet installed', {
+          body: 'Please install your Motion wallet first.',
+        });
+      }
     },
   },
   mounted() {
@@ -76,14 +83,18 @@ export default {
         }
 
         if (os.platform() === 'darwin') {
-          bplist.parseFile(`${os.userInfo().homedir}/Library/Preferences/org.motion.Motion-Qt.plist`, (err, plistData) => {
-            if (err) throw err;
+          if (existsSync(`${os.userInfo().homedir}/Library/Preferences/org.motion.Motion-Qt.plist`)) {
+            bplist.parseFile(`${os.userInfo().homedir}/Library/Preferences/org.motion.Motion-Qt.plist`, (err, plistData) => {
+              if (err) throw err;
 
-            this.$store.commit('SET_MNCONFPATH', {
-              mnConfPath: plistData[0].strDataDir,
+              this.$store.commit('SET_MNCONFPATH', {
+                mnConfPath: plistData[0].strDataDir,
+              });
+              this.runDaemon();
             });
+          } else {
             this.runDaemon();
-          });
+          }
         } else if (os.platform() === 'win32') {
           // regedit.list('HKCU\\SOFTWARE\\MOTION\\MOTION-QT', (err, registryData) => {
           //   if (err) throw err;

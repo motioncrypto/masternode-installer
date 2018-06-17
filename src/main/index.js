@@ -57,6 +57,7 @@ function createWindow() {
   const template = [{
     label: 'Application',
     submenu: [
+      { label: 'Open Developer Tools', click() { mainWindow.webContents.openDevTools(); } },
       { label: 'Quit', accelerator: 'Command+Q', click() { app.quit(); } },
     ],
   }, {
