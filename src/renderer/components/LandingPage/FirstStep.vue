@@ -105,13 +105,17 @@ export default {
             }
           }
 
-          if (this.outputs.length && this.currentMasternodes) {
+          if (this.outputs.length) {
+            if (!this.currentMasternodes || !this.currentMasternodes.length) {
+              this.currentMasternodes = [];
+            }
+
             this.availableMasternodesToInstall = this.outputs
               .filter(output => !this.currentMasternodes
                 .find(masternode => masternode.txid === output.txid));
 
             this.installMasternode();
-          } else if (!this.outputs.length && !this.currentMasternodes) {
+          } else {
             this.installMasternode();
           }
         });
@@ -174,6 +178,8 @@ export default {
             };
           });
 
+        console.log('current masternodes', this.currentMasternodes);
+
         this.compareMasternodes();
       });
     },
@@ -189,6 +195,7 @@ export default {
       // }
 
       if (fs.existsSync(datadirPath)) {
+        console.log('masternode.conf file found');
         this.readCurrentMasternodes(datadirPath);
       } else {
         console.log('datadir', datadirPath);

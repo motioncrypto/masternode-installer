@@ -1,6 +1,6 @@
 {
   "name": "motion-mn-installer",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "Omar Cruz <omar@motionproject.org>",
   "description": "MotionProject Masternode Installer",
   "license": null,
