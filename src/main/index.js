@@ -1,12 +1,16 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron' // eslint-disable-line
-const electronOauth2 = require('electron-oauth2');
-const oauthConfig = require('./config').oauth;
+import { app, BrowserWindow, Menu } from 'electron' // eslint-disable-line
+const express = require('express');
+const bodyParser = require('body-parser');
+const expressApp = express();
 const Client = require('motion-core');
 const client = new Client({
   username: 'motion',
   password: '47VMxa7GvxKaV3J',
   port: 3385,
 });
+
+expressApp.use(bodyParser.urlencoded({ extended: true }));
+expressApp.use(bodyParser.json());
 
 /**
  * Set `__static` path to static files in production
@@ -16,22 +20,20 @@ if (process.env.NODE_ENV !== 'development') {
   global.__static = require('path').join(__dirname, '/static').replace(/\\/g, '\\\\') // eslint-disable-line
 }
 
-const windowParams = {
-  alwaysOnTop: true,
-  autoHideMenuBar: true,
-  webPreferences: {
-    nodeIntegration: false,
-  },
-};
-
-const digitalOceanOAuth = electronOauth2(oauthConfig, windowParams);
-
 let mainWindow;
 const winURL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:9080'
   : `file://${__dirname}/index.html`;
 
+expressApp.get('/do-auth/:accessToken', (req, res) => {
+  mainWindow.webContents.send('do-oauth-reply', req.params.accessToken);
+  res.send('Done, now you can close this tab and return to the installer.');
+});
+
 function createWindow() {
+  expressApp.listen(3456, () => {
+    console.log('oAuth Server listening on port 3456!');
+  });
   /**
    * Initial window options
    */
@@ -79,18 +81,6 @@ function createWindow() {
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
-
-ipcMain.on('do-oauth', (event) => {
-  digitalOceanOAuth.getAccessToken({
-    scope: 'read write',
-  })
-    .then((token) => {
-      console.log(token);
-      event.sender.send('do-oauth-reply', token);
-    }, (err) => {
-      console.log('Error while getting token', err);
-    });
-});
 
 app.on('ready', createWindow);
 

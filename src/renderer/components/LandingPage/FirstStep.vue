@@ -2,9 +2,9 @@
   <div id="first-step">
     <p>Currently you have: <span class="amount">{{Math.floor(balance)}}</span>XMN</p>
     <p class="mt20" v-if="balance >= 1000">We can continue.</p>
-    <p class="mt20" v-if="balance < 1000">We can't continue. You need at least 1000 XMN unlocked on your account.</p>
+    <p class="mt20" v-if="balance < 1000">We can't continue. You need at least 1000.1 XMN unlocked on your account.</p>
     <div class="separator"></div>
-    <div v-if="balance >= 1000">
+    <div v-if="balance >= 1000.1">
       <p>First, we need a good VPS:</p>
       <img src="~@/assets/digitalocean.png" class="do-logo" alt="DigitalOcean" />
       <ul class="buttons">
@@ -16,7 +16,7 @@
         </li>
       </ul>
     </div>
-    <div v-if="balance < 1000">
+    <div v-if="balance < 1000.1">
       <p>You can get more XMN from our <a href="https://motionproject.org/#exchanges" @click="openLink($event, 'https://motionproject.org/#exchanges')" target="_blank">supported exchanges</a>.</p>
     </div>
     <modal name="passphrase" 
@@ -42,6 +42,7 @@ import { shell, ipcRenderer } from 'electron';
 import fs from 'fs';
 // import path from 'path';
 import VueCircle from 'vue2-circle-progress';
+import opn from 'opn';
 import { setTimeout } from 'timers';
 const { dialog } = require('electron').remote;
 const Client = require('motion-core');
@@ -267,7 +268,8 @@ export default {
         });
     },
     loginWithDigitalOcean() {
-      ipcRenderer.send('do-oauth', 'getToken');
+      // ipcRenderer.send('do-oauth', 'getToken');
+      opn('https://cloud.digitalocean.com/v1/oauth/authorize?client_id=643548bb6989b2d7440fc1918f386541b8a43b3baeebcd008b331ee04d4f8d76&redirect_uri=https://us-central1-motion-masternode-installer.cloudfunctions.net/oauthCallback&response_type=code&scope=read write');
     },
   },
   mounted() {
@@ -280,7 +282,7 @@ export default {
 
     ipcRenderer.on('do-oauth-reply', (event, accessToken) => {
       this.$store.commit('SET_ACCESS_TOKEN', {
-        accessToken: accessToken.access_token,
+        accessToken,
       });
       this.getCurrentMasternodes();
     });
