@@ -1,7 +1,7 @@
 const state = {
   accessToken: null,
-  genkey: null,
-  output: null,
+  genkeys: [],
+  outputs: [],
   ip: null,
   mnName: null,
   mnConfPath: null,
@@ -11,11 +11,11 @@ const mutations = {
   SET_ACCESS_TOKEN(state, payload) {
     state.accessToken = payload.accessToken;
   },
-  SET_GENKEY(state, payload) {
-    state.genkey = payload.genkey;
+  SET_GENKEYS(state, payload) {
+    state.genkeys = payload.genkeys;
   },
-  SET_OUTPUT(state, payload) {
-    state.output = payload.output;
+  SET_OUTPUTS(state, payload) {
+    state.outputs = payload.outputs;
   },
   SET_IP(state, payload) {
     state.ip = payload.ip;

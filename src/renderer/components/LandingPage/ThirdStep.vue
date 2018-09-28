@@ -4,7 +4,7 @@
     <div class="loading" v-if="loading">
       <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
     </div> -->
-    <h2>Your Masternode was setup successfully</h2>
+    <h2>Your Masternode(s) was setup successfully</h2>
     <p>Now just close installer and start alias from your wallet on Masternodes tab.</p>
     <div class="finished">
       <button @click="close()" v-if="finished" :disabled="!finished">Close</button>

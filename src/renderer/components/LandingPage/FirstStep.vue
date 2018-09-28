@@ -1,7 +1,7 @@
 <template>
   <div id="first-step">
-    <p>Currently you have: <span class="amount">{{Math.floor(balance)}}</span>XMN</p>
-    <p class="mt20" v-if="balance >= 1000.1">We can continue.</p>
+    <p>Currently you have: <span class="amount">{{Math.trunc(balance)}}</span>XMN</p>
+    <p class="mt20" v-if="balance >= 1000.1">We can continue. <span v-if="(balance / 1000) >= 2"><b>You can install up to {{ Math.trunc(balance / 1000) }} Masternodes!</b></span></p>
     <p class="mt20" v-if="balance < 1000.1">We can't continue. You need at least 1000.1 XMN unlocked on your account.</p>
     <div class="separator"></div>
     <div v-if="balance >= 1000.1">
@@ -9,7 +9,7 @@
       <img src="~@/assets/digitalocean.png" class="do-logo" alt="DigitalOcean" />
       <ul class="buttons">
         <li>
-          <button @click="openLink($event, 'https://cloud.digitalocean.com/v1/oauth/authorize?client_id=643548bb6989b2d7440fc1918f386541b8a43b3baeebcd008b331ee04d4f8d76&redirect_uri=https://us-central1-motion-masternode-installer.cloudfunctions.net/oauthCallback&response_type=code&scope=read write')">Login</button>
+          <button @click="openLink($event, 'https://cloud.digitalocean.com/v1/oauth/authorize?client_id=87717c90e37ca7553cedceaded7325b5a7b3c1c2cfed6a7e178c97ebe9779ccd&redirect_uri=https://9fk4ake7rk.execute-api.us-east-1.amazonaws.com/default/motionoAuthCallback&response_type=code&scope=read write')">Login</button>
         </li>
         <li>
           <button @click="openLink($event, 'https://m.do.co/c/7ef716d06656')">Signup</button>
@@ -19,6 +19,20 @@
     <div v-if="balance < 1000.1">
       <p>You can get more XMN from our <a href="https://motionproject.org/#exchanges" @click="openLink($event, 'https://motionproject.org/#exchanges')" target="_blank">supported exchanges</a>.</p>
     </div>
+    <modal name="nodesqty" 
+      :adaptive="true"
+      :clickToClose="false"
+      class="prompt"
+      width="80%"
+      height="30%">
+      <div class="modal-container">
+        <form @submit.prevent="settedNodesQty">
+          <p>How many Masternodes do you want to install?:</p>
+          <input type="number" step="1" min="1" :max="Math.trunc(balance / 1000)" v-model="masternodesToInstall" @blur="fixMaxInstallNumber()" />
+          <button type="submit">Proceed</button>
+        </form>
+      </div>
+    </modal>
     <modal name="passphrase" 
       :adaptive="true"
       :clickToClose="false"
@@ -29,7 +43,7 @@
         <form @submit.prevent="unlockWallet">
           <p>We need to unlock your wallet, please input your Passphrase:</p>
           <input type="password" v-model="passphrase" />
-          <button type="submit" @click="unlockWallet">Unlock</button>
+          <button type="submit">Unlock</button>
         </form>
       </div>
     </modal>
@@ -38,12 +52,10 @@
 
 <script>
 import { shell, ipcRenderer } from 'electron';
-// import os from 'os';
+import os from 'os';
 import fs from 'fs';
+import axios from 'axios';
 // import path from 'path';
-import VueCircle from 'vue2-circle-progress';
-import { setTimeout } from 'timers';
-const { dialog } = require('electron').remote;
 const Client = require('motion-core');
 const client = new Client({
   username: 'motion',
@@ -52,17 +64,15 @@ const client = new Client({
 });
 
 export default {
-  components: {
-    VueCircle,
-  },
   data() {
     return {
       outputs: [],
       availableMasternodesToInstall: [],
       currentMasternodes: null,
-      xmnaddress: null,
+      xmnaddresses: [],
       passphrase: '',
       incorrectPassphrase: false,
+      masternodesToInstall: 1,
     };
   },
   computed: {
@@ -91,48 +101,97 @@ export default {
         });
     },
     compareMasternodes() {
-      client
-        .masternode('outputs')
-        .then((response) => {
+      axios.post('http://localhost:3385/', {
+        jsonrpc: '1.0',
+        method: 'masternode',
+        params: ['outputs'],
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        auth: {
+          username: 'motion',
+          password: '47VMxa7GvxKaV3J',
+        },
+      }).then((response) => {
+        // eslint-disable-next-line
+        for (const key in response.data.result) {
           // eslint-disable-next-line
-          for (const key in response) {
-            // eslint-disable-next-line
-            if (response.hasOwnProperty(key)) {
-              this.outputs.push({
-                txid: key,
-                txnumber: response[key],
-              });
-            }
+          if (response.data.result.hasOwnProperty(key)) {
+            this.outputs.push({
+              txid: key,
+              txnumber: response.data.result[key],
+            });
+          }
+        }
+
+        if (this.outputs.length) {
+          if (!this.currentMasternodes || !this.currentMasternodes.length) {
+            this.currentMasternodes = [];
           }
 
-          if (this.outputs.length) {
-            if (!this.currentMasternodes || !this.currentMasternodes.length) {
-              this.currentMasternodes = [];
-            }
+          // this.availableMasternodesToInstall = this.outputs
+          //   .filter(output => !this.currentMasternodes
+          //     .find(masternode => masternode.txid === output.txid &&
+          //       masternode.txnumber === output.txnumber));
+          this.availableMasternodesToInstall = this.outputs
+            .filter(this.comparer(this.currentMasternodes));
 
-            this.availableMasternodesToInstall = this.outputs
-              .filter(output => !this.currentMasternodes
-                .find(masternode => masternode.txid === output.txid));
+          // Double filtering with different methods. Removing duplicates.
+          this.availableMasternodesToInstall = this.availableMasternodesToInstall
+            .filter((masternode, index, self) =>
+              index === self.findIndex(t => t.txid === masternode.txid &&
+                t.txnumber === masternode.txnumber),
+            );
 
-            this.installMasternode();
-          } else {
-            this.installMasternode();
-          }
+          this.installMasternode();
+        } else {
+          this.installMasternode();
+        }
+      }).catch((error) => {
+        console.error('Error getting the masternode outputs', error);
+      });
+    },
+    comparer(otherArray) {
+      return current => otherArray
+        // eslint-disable-next-line
+        .filter(other => other.txid == current.txid && other.txnumber == current.txnumber)
+        .length === 0;
+    },
+    getOuputsFromTxId(txId) {
+      this.availableMasternodesToInstall = [];
+      // eslint-disable-next-line
+      for (let i = 1; i <= Number(this.masternodesToInstall); i += 1) {
+        this.availableMasternodesToInstall.push({
+          txid: txId,
+          txnumber: i,
         });
+      }
+      console.log('Outputs found', this.availableMasternodesToInstall);
+
+      this.installMasternode();
     },
     installMasternode() {
-      if (this.availableMasternodesToInstall.length) {
-        // Get first available output
-        const output = this.availableMasternodesToInstall[0];
-        this.$store.commit('SET_OUTPUT', {
-          output,
+      if (this.availableMasternodesToInstall &&
+        this.availableMasternodesToInstall.length >= Number(this.masternodesToInstall)) {
+        console.log('Awesome! we can install');
+        console.log(this.availableMasternodesToInstall);
+        // Get firsts available outputs
+        const outputs = this.availableMasternodesToInstall.slice(0,
+          Number(this.masternodesToInstall));
+        this.$store.commit('SET_OUTPUTS', {
+          outputs,
         });
-        // Generate Privkey
-        client
-          .masternode('genkey')
-          .then((genkey) => {
-            this.$store.commit('SET_GENKEY', {
-              genkey,
+        // Generate Privkeys
+        const genkeysPromises = [];
+        for (let i = 0; i < Number(this.masternodesToInstall); i += 1) {
+          genkeysPromises.push(client.masternode('genkey'));
+        }
+        Promise.all(genkeysPromises)
+          .then((genkeys) => {
+            console.log('Genkeys generated', genkeys);
+            this.$store.commit('SET_GENKEYS', {
+              genkeys,
             });
             // Start Installation
             this.$store.commit('SET_STEP', {
@@ -141,27 +200,59 @@ export default {
           });
       } else {
         console.log('not available masternodes');
+        const accountsToGenerate = Number(this.masternodesToInstall);
         // Create new wallet
         client
-          .getNewAddress(this.mnName)
+          .getNewAddress(`${this.mnName}base`)
           .then((address) => {
             console.log('New Address Generated', address);
-            this.xmnaddress = address;
+            console.log('accounts to generate', accountsToGenerate);
+            const baseaddress = address;
             // Send 1000 XMN
             client
-              .sendToAddress(this.xmnaddress, 1000)
+              .sendToAddress(baseaddress,
+                accountsToGenerate === 1 ? 1000 : ((accountsToGenerate * 1000) + 1))
               .then((txid) => {
-                console.log('txid', txid);
-                // Restart Install Masternode
-                this.compareMasternodes();
+                console.log('basetxid', txid);
+                if (accountsToGenerate === 1) {
+                  // Restart Install Masternode
+                  this.compareMasternodes();
+                } else {
+                  const generateAddressesArray = [];
+                  for (let i = 0; i < accountsToGenerate; i += 1) {
+                    generateAddressesArray.push(client.getNewAddress(`${this.mnName}-${i}`));
+                  }
+                  Promise.all(generateAddressesArray)
+                    .then((wallets) => {
+                      const sendAddresses = {};
+
+                      wallets.forEach((wallet) => {
+                        sendAddresses[wallet] = 1000;
+                      });
+
+                      client
+                        .sendMany(`${this.mnName}base`, sendAddresses, 0)
+                        .then((txid) => {
+                          console.log('sendManyTxId', txid);
+                          // Restart Install Masternode
+                          this.getOuputsFromTxId(txid);
+                        })
+                        .catch((error) => {
+                          console.error('Error sending mn funds', error);
+                        });
+                    })
+                    .catch((error) => {
+                      console.error('Error generating the mn wallets', error);
+                    });
+                }
+              })
+              .catch((error) => {
+                console.log('Error sending funds to base address', error);
               });
           });
       }
     },
     readCurrentMasternodes(path) {
-      this.$store.commit('SET_MNCONFPATH', {
-        mnConfPath: path,
-      });
       fs.readFile(path, 'utf8', (err, data) => {
         if (err) throw err;
         const lines = data.split('\n');
@@ -184,37 +275,25 @@ export default {
       });
     },
     getCurrentMasternodes() {
-      let datadirPath = `${this.$store.state.Information.mnConfPath}/masternode.conf`;
-      // let datadirPath = `${os.userInfo().homedir}/AppData/Roaming/MotionCore/masternode.conf`;
-      // if (os.platform() === 'darwin') {
-      //   datadirPath =
-      //  `${os.userInfo().homedir}/Library/Application Support/MotionCore/masternode.conf`;
-      // }
-      // if (os.platform() === 'linux') {
-      //   datadirPath = `${os.userInfo().homedir}/.motioncore/masternode.conf`;
-      // }
+      let datadirPath = this.$store.state.Information.mnConfPath;
 
-      if (fs.existsSync(datadirPath)) {
+      if (fs.existsSync(`${datadirPath}/masternode.conf`)) {
         console.log('masternode.conf file found');
-        this.readCurrentMasternodes(datadirPath);
+        this.readCurrentMasternodes(`${datadirPath}/masternode.conf`);
       } else {
         console.log('datadir', datadirPath);
-        // eslint-disable-next-line
-        new window.Notification('Motion Datadir is not the default one', {
-          body: 'Please select your Motion Datadir manually',
-        });
-        setTimeout(() => {
-          datadirPath = dialog.showOpenDialog({
-            properties: ['openDirectory'],
-          });
-        }, 1000);
+        datadirPath = `${os.userInfo().homedir}/AppData/Roaming/MotionCore`;
+        if (os.platform() === 'darwin') {
+          datadirPath =
+         `${os.userInfo().homedir}/Library/Application Support/MotionCore`;
+        }
+        if (os.platform() === 'linux') {
+          datadirPath = `${os.userInfo().homedir}/.motioncore`;
+        }
         if (fs.existsSync(`${datadirPath}/masternode.conf`)) {
-          this.$store.commit('SET_MNCONFPATH', {
-            mnConfPath: datadirPath,
-          });
-          this.readCurrentMasternodes(datadirPath);
+          this.readCurrentMasternodes(`${datadirPath}/masternode.conf`);
         } else {
-          this.getCurrentMasternodes();
+          console.error('Unable to reach the masternode.conf file');
         }
       }
     },
@@ -223,29 +302,6 @@ export default {
         .getInfo()
         .then((info) => {
           if (Object.prototype.hasOwnProperty.call(info, 'unlocked_until')) {
-            // userPrompt('First, we need to unlock your wallet, please input your Passphrase:',
-            //   'Your Passphrase', path.join(__static, '/icons/256x256.png'))
-            //   .then((input) => {
-            //     if (!input) {
-            //       this.checkForPassphrase();
-            //     } else {
-            //       client
-            //         .walletPassphrase(input, 5000)
-            //         .then(() => {
-            //           this.$store.commit('SET_PASSPHRASE', {
-            //             passphrase: input,
-            //           });
-            //         })
-            //         .catch((error) => {
-            //           if (error.code === -14) {
-            //             this.checkForPassphrase();
-            //           }
-            //         });
-            //     }
-            //   })
-            //   .catch((err) => {
-            //     console.log(err);
-            //   });
             this.$modal.show('passphrase');
           }
         });
@@ -266,6 +322,15 @@ export default {
           }
         });
     },
+    settedNodesQty() {
+      this.$modal.hide('nodesqty');
+      this.getCurrentMasternodes();
+    },
+    fixMaxInstallNumber() {
+      if (this.masternodesToInstall > Math.trunc(this.balance / 1000)) {
+        this.masternodesToInstall = Math.trunc(this.balance / 1000);
+      }
+    },
   },
   mounted() {
     this.checkForPassphrase();
@@ -274,12 +339,19 @@ export default {
     this.$store.commit('SET_MNNAME', {
       mnName: this.mnName,
     });
+    // this.compareMasternodes();
 
     ipcRenderer.on('do-oauth-reply', (event, accessToken) => {
       this.$store.commit('SET_ACCESS_TOKEN', {
         accessToken,
       });
-      this.getCurrentMasternodes();
+      if ((this.balance / 1000) >= 2) {
+        console.log('This user can install more than 1 Masternode, ask how many want');
+        this.$modal.show('nodesqty');
+      } else {
+        console.log('Try to install the masternode');
+        this.getCurrentMasternodes();
+      }
     });
   },
 };
